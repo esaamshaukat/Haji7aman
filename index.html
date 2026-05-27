@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Haji 7aman Snacks</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #F7F3EE; color: #1C1810; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* HEADER */
+    header { background: #1C1810; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #D4A843; flex-shrink: 0; }
+    .logo { font-size: 20px; color: #D4A843; font-weight: bold; letter-spacing: 1px; }
+    nav { display: flex; gap: 10px; }
+    .nav-btn { padding: 9px 18px; border-radius: 8px; border: 1.5px solid #3A3028; background: transparent; color: #AAA090; font-size: 13px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .nav-btn.active { background: #D4A843; color: #1C1810; border-color: #D4A843; font-weight: bold; }
+
+    /* VIEWS */
+    .view { display: none; flex: 1; overflow: hidden; }
+    .view.active { display: flex; }
+    #view-manage.active, #view-history.active { display: block; overflow-y: auto; padding: 24px 28px; }
+
+    /* ORDER VIEW */
+    .grid-wrap { flex: 1; padding: 20px 24px; overflow-y: auto; }
+    .section-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #9A8A70; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #E0D8CC; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 16px; }
+
+    /* ITEM CARD */
+    .card { background: #FFF; border: 2px solid #E8E0D0; border-radius: 14px; padding: 18px 14px 14px; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: all 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .card.active { border-color: #D4A843; background: #FFFBF0; box-shadow: 0 2px 12px rgba(212,168,67,0.2); }
+    .card.out { opacity: 0.5; }
+    .card-badge { position: absolute; top: -9px; right: -9px; background: #D4A843; color: #1C1810; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid #FFF; }
+    .card-emoji { font-size: 32px; margin-bottom: 2px; }
+    .card-name { font-size: 13px; font-weight: 700; text-align: center; color: #1C1810; line-height: 1.3; }
+    .card-price { font-size: 15px; color: #D4A843; font-weight: bold; }
+    .card-stock { font-size: 11px; color: #AAA090; }
+    .out-label { font-size: 11px; color: #E05050; font-weight: bold; margin-top: 4px; }
+    .qty-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+    .qb { width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid #E0D8CC; background: #F7F3EE; color: #D4A843; font-size: 18px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .qb:disabled { opacity: 0.3; cursor: not-allowed; }
+    .qty-input { width: 42px; text-align: center; border: 1.5px solid #E0D8CC; border-radius: 6px; padding: 4px; font-size: 14px; font-weight: bold; color: #1C1810; background: #FFF; font-family: inherit; }
+
+    /* ORDER PANEL */
+    .panel { width: 290px; background: #1C1810; color: #F5F0E8; display: flex; flex-direction: column; border-left: 3px solid #D4A843; flex-shrink: 0; }
+    .panel-title { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #D4A843; padding: 18px 20px 14px; border-bottom: 1px solid #2A2018; }
+    .panel-items { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .panel-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 160px; color: #4A3A2A; font-size: 13px; gap: 8px; }
+    .panel-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #2A2018; }
+    .panel-row-name { font-size: 13px; color: #F0E8D8; font-weight: 600; }
+    .panel-row-sub { font-size: 11px; color: #7A6A5A; margin-top: 2px; }
+    .panel-row-amt { font-size: 13px; color: #D4A843; font-weight: bold; min-width: 60px; text-align: right; }
+    .totals-box { padding: 14px 20px; border-top: 2px solid #D4A843; background: #141008; }
+    .total-items { font-size: 11px; color: #7A6A5A; margin-bottom: 4px; }
+    .total-row { display: flex; justify-content: space-between; align-items: baseline; }
+    .total-label { font-size: 12px; letter-spacing: 2px; color: #9A8A70; text-transform: uppercase; }
+    .total-val { font-size: 22px; font-weight: bold; color: #D4A843; }
+    .total-bhd { font-size: 12px; color: #5A4A3A; text-align: right; margin-top: 2px; }
+    .check-btn { margin: 14px 16px 6px; padding: 15px; background: #D4A843; color: #1C1810; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer; letter-spacing: 0.5px; transition: all 0.15s; }
+    .check-btn:disabled { background: #2A2018; color: #4A3A2A; cursor: not-allowed; }
+    .clear-btn { margin: 0 16px 14px; padding: 9px; background: transparent; color: #5A4A3A; border: 1px solid #2A2018; border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; width: calc(100% - 32px); }
+
+    /* MANAGE VIEW */
+    .manage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .add-btn { padding: 10px 20px; background: #D4A843; color: #1C1810; border: none; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .manage-list { display: flex; flex-direction: column; gap: 10px; }
+    .manage-row { background: #FFF; border: 1.5px solid #E8E0D0; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .manage-emoji { font-size: 26px; }
+    .manage-info { flex: 1; }
+    .manage-name { font-weight: 700; font-size: 15px; color: #1C1810; }
+    .manage-meta { font-size: 12px; color: #9A8A70; margin-top: 2px; }
+    .edit-btn { padding: 7px 16px; background: #F7F3EE; border: 1.5px solid #E0D8CC; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit; }
+    .del-btn { padding: 7px 12px; background: #FFF0F0; border: 1.5px solid #FFCCCC; border-radius: 8px; cursor: pointer; font-size: 14px; }
+
+    /* HISTORY */
+    .hist-card { background: #FFF; border: 1.5px solid #E8E0D0; border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+    .hist-header { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+    .hist-id { font-weight: bold; font-family: monospace; font-size: 15px; }
+    .hist-time { flex: 1; font-size: 12px; color: #9A8A70; }
+    .hist-total { font-size: 14px; font-weight: bold; color: #D4A843; }
+    .hist-items { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { background: #F7F3EE; border: 1px solid #E0D8CC; border-radius: 20px; padding: 3px 10px; font-size: 12px; color: #5A4A3A; }
+    .history-empty { color: #9A8A70; font-size: 15px; padding: 40px; text-align: center; }
+
+    /* MODAL */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); align-items: center; justify-content: center; z-index: 100; }
+    .overlay.open { display: flex; }
+    .modal { background: #FFF; border-radius: 16px; padding: 28px 28px 22px; width: 90%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 10px; }
+    .modal-title { font-size: 18px; font-weight: bold; color: #1C1810; margin-bottom: 4px; }
+    .modal label { font-size: 12px; color: #7A6A5A; letter-spacing: 0.5px; margin-top: 4px; }
+    .modal input { padding: 10px 12px; border-radius: 8px; border: 1.5px solid #E0D8CC; font-size: 15px; font-family: inherit; color: #1C1810; outline: none; }
+    .input-hint { font-size: 11px; color: #AAA090; margin-top: -4px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 8px; }
+    .cancel-btn { flex: 1; padding: 12px; background: #F7F3EE; border: 1.5px solid #E0D8CC; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: inherit; }
+    .save-btn { flex: 2; padding: 12px; background: #D4A843; color: #1C1810; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit; }
+    .confirm-row { display: flex; justify-content: space-between; font-size: 14px; padding: 5px 0; color: #3A3028; }
+    .confirm-total { border-top: 2px solid #E8E0D0; padding-top: 10px; margin-top: 6px; font-weight: bold; }
+    .placed-box { display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 12px; }
+    .placed-text { font-size: 22px; font-weight: bold; color: #2A8A4A; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">🛒 Haji 7aman Snacks</div>
+  <nav>
+    <button class="nav-btn active" onclick="switchView('order')">📋 New Order</button>
+    <button class="nav-btn" onclick="switchView('manage')">⚙️ Manage Menu</button>
+    <button class="nav-btn" id="history-nav-btn" onclick="switchView('history')">🕐 History (0)</button>
+  </nav>
+</header>
+
+<!-- ORDER VIEW -->
+<div class="view active" id="view-order">
+  <div class="grid-wrap">
+    <div class="section-label">Select Items</div>
+    <div class="grid" id="item-grid"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Order Preview</div>
+    <div class="panel-items" id="panel-items">
+      <div class="panel-empty"><div style="font-size:40px">🧾</div><div>No items selected</div></div>
+    </div>
+    <div id="totals-box" style="display:none" class="totals-box">
+      <div class="total-items" id="total-qty-label"></div>
+      <div class="total-row">
+        <span class="total-label">TOTAL</span>
+        <span class="total-val" id="total-fils"></span>
+      </div>
+      <div class="total-bhd" id="total-bhd"></div>
+    </div>
+    <button class="check-btn" id="confirm-btn" disabled onclick="openConfirm()">Confirm Order</button>
+    <button class="clear-btn" id="clear-btn" style="display:none" onclick="clearOrder()">Clear All</button>
+  </div>
+</div>
+
+<!-- MANAGE VIEW -->
+<div class="view" id="view-manage">
+  <div class="manage-header">
+    <div class="section-label" style="margin-bottom:0">Menu Items</div>
+    <button class="add-btn" onclick="openAddModal()">+ Add Item</button>
+  </div>
+  <div class="manage-list" id="manage-list"></div>
+</div>
+
+<!-- HISTORY VIEW -->
+<div class="view" id="view-history">
+  <div class="section-label">Completed Orders</div>
+  <div id="history-list"><div class="history-empty">No orders yet.</div></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Item</div>
+    <label>Name</label>
+    <input type="text" id="edit-name" />
+    <label>Price (in fils)</label>
+    <input type="number" id="edit-price" placeholder="e.g. 200" />
+    <div class="input-hint">Enter in fils — e.g. 200 = 0.200 BHD</div>
+    <label>Remaining Stock (qty)</label>
+    <input type="number" id="edit-stock" />
+    <div class="modal-btns">
+      <button class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+      <button class="save-btn" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ITEM MODAL -->
+<div class="overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add New Item</div>
+    <label>Emoji Icon</label>
+    <input type="text" id="new-emoji" value="🛍️" />
+    <label>Item Name</label>
+    <input type="text" id="new-name" placeholder="e.g. Oreo" />
+    <label>Price (in fils)</label>
+    <input type="number" id="new-price" placeholder="e.g. 150" />
+    <div class="input-hint">Enter in fils — e.g. 150 = 0.150 BHD</div>
+    <label>Stock Quantity</label>
+    <input type="number" id="new-stock" placeholder="e.g. 20" />
+    <div class="modal-btns">
+      <button class="cancel-btn" onclick="closeAddModal()">Cancel</button>
+      <button class="save-btn" onclick="addItem()">Add Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay" id="confirm-modal">
+  <div class="modal" style="max-width:400px">
+    <div id="confirm-content"></div>
+  </div>
+</div>
+
+<script>
+  // ── STATE ──
+  let menu = [
+    { id: 1, name: "Choki Choki",       price: 0.200, stock: 20, emoji: "🍫" },
+    { id: 2, name: "Bahrain Pufak",     price: 0.050, stock: 30, emoji: "🍿" },
+    { id: 3, name: "Miro Chocolate",    price: 0.100, stock: 25, emoji: "🍬" },
+    { id: 4, name: "Basmah Green Puff", price: 0.050, stock: 30, emoji: "🟢" },
+    { id: 5, name: "Ritz Cracker",      price: 0.100, stock: 20, emoji: "🟡" },
+    { id: 6, name: "Big Top",           price: 0.050, stock: 35, emoji: "🍭" },
+    { id: 7, name: "TimeOut Chocolate", price: 0.200, stock: 15, emoji: "🍫" },
+    { id: 8, name: "Sando Wafers",      price: 0.100, stock: 22, emoji: "🍪" },
+    { id: 9, name: "KitKat",            price: 0.200, stock: 18, emoji: "🍫" },
+  ];
+
+  let order = {};        // { id: qty }
+  let completedOrders = [];
+  let editingId = null;
+
+  function fils(bhd) {
+    return Math.round(bhd * 1000) + " fils";
+  }
+
+  function getQty(id) { return order[id] || 0; }
+
+  function setQty(id, qty) {
+    const item = menu.find(m => m.id === id);
+    if (!item) return;
+    if (qty < 0) qty = 0;
+    if (qty > item.stock) qty = item.stock;
+    if (qty === 0) delete order[id];
+    else order[id] = qty;
+    renderGrid();
+    renderPanel();
+  }
+
+  // ── VIEWS ──
+  function switchView(v) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-' + v).classList.add('active');
+    const btns = document.querySelectorAll('.nav-btn');
+    const idx = ['order','manage','history'].indexOf(v);
+    btns[idx].classList.add('active');
+    if (v === 'manage') renderManage();
+    if (v === 'history') renderHistory();
+  }
+
+  // ── ITEM GRID ──
+  function renderGrid() {
+    const grid = document.getElementById('item-grid');
+    grid.innerHTML = '';
+    menu.forEach(item => {
+      const qty = getQty(item.id);
+      const out = item.stock === 0;
+
+      const card = document.createElement('div');
+      card.className = 'card' + (qty > 0 ? ' active' : '') + (out ? ' out' : '');
+
+      card.innerHTML = `
+        ${qty > 0 ? `<div class="card-badge">${qty}</div>` : ''}
+        <div class="card-emoji">${item.emoji}</div>
+        <div class="card-name">${item.name}</div>
+        <div class="card-price">${fils(item.price)}</div>
+        <div class="card-stock">Stock: ${item.stock}</div>
+        ${out
+          ? `<div class="out-label">Out of Stock</div>`
+          : `<div class="qty-row">
+              <button class="qb" onclick="setQty(${item.id}, ${qty - 1})" ${qty === 0 ? 'disabled' : ''}>−</button>
+              <input class="qty-input" type="number" min="0" max="${item.stock}" value="${qty}"
+                onchange="setQty(${item.id}, parseInt(this.value)||0)" />
+              <button class="qb" onclick="setQty(${item.id}, ${qty + 1})" ${qty >= item.stock ? 'disabled' : ''}>+</button>
+            </div>`
+        }
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  // ── ORDER PANEL ──
+  function renderPanel() {
+    const items = menu.filter(m => (order[m.id] || 0) > 0);
+    const subtotal = items.reduce((s, m) => s + m.price * order[m.id], 0);
+    const totalQty = items.reduce((s, m) => s + order[m.id], 0);
+
+    const panelItems = document.getElementById('panel-items');
+    if (items.length === 0) {
+      panelItems.innerHTML = '<div class="panel-empty"><div style="font-size:40px">🧾</div><div>No items selected</div></div>';
+    } else {
+      panelItems.innerHTML = items.map(item => `
+        <div class="panel-row">
+          <div>
+            <div class="panel-row-name">${item.name}</div>
+            <div class="panel-row-sub">×${order[item.id]} @ ${fils(item.price)}</div>
+          </div>
+          <div class="panel-row-amt">${fils(item.price * order[item.id])}</div>
+        </div>
+      `).join('');
+    }
+
+    const totalsBox = document.getElementById('totals-box');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const clearBtn = document.getElementById('clear-btn');
+
+    if (items.length > 0) {
+      totalsBox.style.display = 'block';
+      document.getElementById('total-qty-label').textContent = totalQty + ' item' + (totalQty !== 1 ? 's' : '');
+      document.getElementById('total-fils').textContent = fils(subtotal);
+      document.getElementById('total-bhd').textContent = subtotal.toFixed(3) + ' BHD';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = `Confirm Order · ${totalQty} item${totalQty !== 1 ? 's' : ''}`;
+      clearBtn.style.display = 'block';
+    } else {
+      totalsBox.style.display = 'none';
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Confirm Order';
+      clearBtn.style.display = 'none';
+    }
+  }
+
+  function clearOrder() {
+    order = {};
+    renderGrid();
+    renderPanel();
+  }
+
+  // ── CONFIRM ORDER ──
+  function openConfirm() {
+    const items = menu.filter(m => (order[m.id] || 0) > 0);
+    const subtotal = items.reduce((s, m) => s + m.price * order[m.id], 0);
+
+    const rows = items.map(item => `
+      <div class="confirm-row">
+        <span>${item.name} ×${order[item.id]}</span>
+        <span>${fils(item.price * order[item.id])}</span>
+      </div>`).join('');
+
+    document.getElementById('confirm-content').innerHTML = `
+      <div class="modal-title">Confirm Order?</div>
+      ${rows}
+      <div class="confirm-row confirm-total">
+        <span>TOTAL</span>
+        <span>${fils(subtotal)} (${subtotal.toFixed(3)} BHD)</span>
+      </div>
+      <div class="modal-btns">
+        <button class="cancel-btn" onclick="closeConfirm()">Back</button>
+        <button class="save-btn" onclick="placeOrder()">Place Order ✓</button>
+      </div>
+    `;
+    document.getElementById('confirm-modal').classList.add('open');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirm-modal').classList.remove('open');
+  }
+
+  function placeOrder() {
+    const items = menu.filter(m => (order[m.id] || 0) > 0);
+    const subtotal = items.reduce((s, m) => s + m.price * order[m.id], 0);
+
+    // Deduct stock
+    menu = menu.map(m => ({ ...m, stock: m.stock - (order[m.id] || 0) }));
+
+    completedOrders.unshift({
+      id: '#' + String(completedOrders.length + 1).padStart(4, '0'),
+      items: items.map(m => ({ name: m.name, qty: order[m.id], price: m.price })),
+      total: subtotal,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+
+    document.getElementById('confirm-content').innerHTML = `
+      <div class="placed-box">
+        <div style="font-size:56px">✅</div>
+        <div class="placed-text">Order Placed!</div>
+      </div>
+    `;
+
+    document.getElementById('history-nav-btn').textContent = `🕐 History (${completedOrders.length})`;
+
+    setTimeout(() => {
+      order = {};
+      renderGrid();
+      renderPanel();
+      closeConfirm();
+    }, 1200);
+  }
+
+  // ── MANAGE ──
+  function renderManage() {
+    const list = document.getElementById('manage-list');
+    list.innerHTML = menu.map(item => `
+      <div class="manage-row">
+        <div class="manage-emoji">${item.emoji}</div>
+        <div class="manage-info">
+          <div class="manage-name">${item.name}</div>
+          <div class="manage-meta">${fils(item.price)} &nbsp;·&nbsp; Stock: ${item.stock}</div>
+        </div>
+        <button class="edit-btn" onclick="openEditModal(${item.id})">✏️ Edit</button>
+        <button class="del-btn" onclick="deleteItem(${item.id})">🗑️</button>
+      </div>
+    `).join('');
+  }
+
+  function deleteItem(id) {
+    menu = menu.filter(m => m.id !== id);
+    delete order[id];
+    renderManage();
+    renderGrid();
+    renderPanel();
+  }
+
+  function openEditModal(id) {
+    editingId = id;
+    const item = menu.find(m => m.id === id);
+    document.getElementById('edit-name').value = item.name;
+    document.getElementById('edit-price').value = Math.round(item.price * 1000);
+    document.getElementById('edit-stock').value = item.stock;
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    editingId = null;
+  }
+
+  function saveEdit() {
+    const name = document.getElementById('edit-name').value.trim();
+    const price = parseFloat(document.getElementById('edit-price').value) / 1000;
+    const stock = parseInt(document.getElementById('edit-stock').value);
+    if (!name || isNaN(price) || isNaN(stock)) return;
+    menu = menu.map(m => m.id === editingId ? { ...m, name, price, stock } : m);
+    if (order[editingId]) order[editingId] = Math.min(order[editingId], stock);
+    closeEditModal();
+    renderManage();
+    renderGrid();
+    renderPanel();
+  }
+
+  function openAddModal() {
+    document.getElementById('new-name').value = '';
+    document.getElementById('new-price').value = '';
+    document.getElementById('new-stock').value = '';
+    document.getElementById('new-emoji').value = '🛍️';
+    document.getElementById('add-modal').classList.add('open');
+  }
+
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.remove('open');
+  }
+
+  function addItem() {
+    const name = document.getElementById('new-name').value.trim();
+    const price = parseFloat(document.getElementById('new-price').value) / 1000;
+    const stock = parseInt(document.getElementById('new-stock').value);
+    const emoji = document.getElementById('new-emoji').value || '🛍️';
+    if (!name || isNaN(price) || isNaN(stock)) return;
+    menu.push({ id: Date.now(), name, price, stock, emoji });
+    closeAddModal();
+    renderManage();
+    renderGrid();
+  }
+
+  // ── HISTORY ──
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (completedOrders.length === 0) {
+      list.innerHTML = '<div class="history-empty">No orders yet.</div>';
+      return;
+    }
+    list.innerHTML = completedOrders.map(o => `
+      <div class="hist-card">
+        <div class="hist-header">
+          <span class="hist-id">${o.id}</span>
+          <span class="hist-time">${o.time}</span>
+          <span class="hist-total">${fils(o.total)} (${o.total.toFixed(3)} BHD)</span>
+        </div>
+        <div class="hist-items">
+          ${o.items.map(i => `<span class="chip">${i.name} ×${i.qty}</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── INIT ──
+  renderGrid();
+  renderPanel();
+</script>
+</body>
+</html>
