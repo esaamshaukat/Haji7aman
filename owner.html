@@ -449,7 +449,10 @@
   <div id="history-detail-view" style="display:none">
     <div class="hist-detail-header">
       <div class="section-label" style="margin-bottom:0" id="detail-title"></div>
-      <button class="back-btn" onclick="closeDetail()">&#8592; Back</button>
+      <div style="display:flex;gap:8px;">
+        <button class="back-btn" id="delete-order-btn" onclick="deleteOrder()" style="background:#FFF0F0;border-color:#FFCCCC;color:#E05050;">&#128465; Delete</button>
+        <button class="back-btn" onclick="closeDetail()">&#8592; Back</button>
+      </div>
     </div>
     <div class="hist-detail-rows" id="detail-rows"></div>
     <div class="hd-totals" id="detail-totals"></div>
@@ -971,8 +974,10 @@ function renderHistory(){
   if(report) report.classList.remove('show');
   renderFilteredList(completedOrders);
 }
+let currentDetailFbId = null;
 function openDetail(i){
   const o=completedOrders[i];
+  currentDetailFbId = o.fbId || null;
   document.getElementById('history-list-view').style.display='none';
   document.getElementById('history-detail-view').style.display='block';
   document.getElementById('detail-title').textContent=`Order ${o.id} — ${o.time}`;
@@ -990,6 +995,25 @@ function openDetail(i){
   document.getElementById('detail-totals').innerHTML=`
     <div class="hd-total-row"><span>Items Total</span><span>${fils(o.total)}</span></div>
     <div class="hd-total-row hd-total-bold"><span>TOTAL</span><span>${o.total.toFixed(3)} BHD</span></div>${payInfo}`;
+}
+function deleteOrder(){
+  if(!currentDetailFbId){
+    // No Firebase ID — just remove from local array
+    completedOrders = completedOrders.filter(o=>o.fbId!==currentDetailFbId);
+    closeDetail();
+    return;
+  }
+  if(!confirm('Delete this order? It will be removed from history and sales totals.')) return;
+  // Remove from Firebase
+  import("https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js").then(({doc,deleteDoc})=>{
+    deleteDoc(doc(window.db,'orders',currentDetailFbId)).catch(e=>console.error(e));
+  });
+  // Remove from local array immediately
+  completedOrders = completedOrders.filter(o=>o.fbId!==currentDetailFbId);
+  window.completedOrders = completedOrders;
+  document.getElementById('history-nav-btn').textContent='History ('+completedOrders.length+')';
+  if(window.showDbStatus) window.showDbStatus('Order deleted','ok');
+  closeDetail();
 }
 function closeDetail(){renderHistory();}
 
