@@ -324,10 +324,14 @@ function startOrdering(){
   customerPhone = document.getElementById('cust-phone').value.trim();
   if(!customerName){ alert('Please enter your name'); return; }
   if(!customerPhone){ alert('Please enter your phone number'); return; }
+  // Save details and current page so refresh restores them
+  localStorage.setItem('haji7aman_customer', JSON.stringify({name:customerName, phone:customerPhone}));
+  localStorage.setItem('haji7aman_page', 'page-menu');
   showPage('page-menu');
 }
 
 function goToReview(){
+  localStorage.setItem('haji7aman_page', 'page-review');
   const items = menuItems.filter(m=>(cart[m.id]||0)>0);
   if(!items.length){ alert('Please add at least one item'); return; }
   const total = items.reduce((s,m)=>s+m.price*cart[m.id],0);
@@ -365,6 +369,7 @@ async function submitOrder(){
   try {
     const ref = await db.collection('customer_orders').add(orderData);
     cart = {};
+    localStorage.removeItem('haji7aman_page');
     saveOrderToStorage(ref.id, customerName, customerPhone, orderData.items, total, orderData.time);
     startTracking(ref.id, orderData);
   } catch(e){
@@ -490,6 +495,7 @@ function updateMyOrdersBtn(){
 
 function newOrder(){
   localStorage.removeItem('haji7aman_active');
+  localStorage.removeItem('haji7aman_page');
   if(trackUnsub){ trackUnsub(); trackUnsub=null; }
   try{
     const cust = JSON.parse(localStorage.getItem('haji7aman_customer')||'{}');
@@ -553,39 +559,60 @@ async function reopenOrder(orderId){
 }
 
 // ── INIT ──
-window.addEventListener('DOMContentLoaded', async function(){
-  loadMenu();
-  updateMyOrdersBtn();
-  // Pre-fill saved name/phone
+window.addEventListener('DOMContentLoaded', function(){
+  // Pre-fill saved name/phone immediately — no need to wait for Firebase
   try{
     const cust = JSON.parse(localStorage.getItem('haji7aman_customer')||'{}');
     if(cust.name) document.getElementById('cust-name').value = cust.name;
     if(cust.phone) document.getElementById('cust-phone').value = cust.phone;
   }catch(e){}
-  // Restore active order if exists
+
+  updateMyOrdersBtn();
+
+  // Check localStorage FIRST — no Firebase needed for this
   const activeId = localStorage.getItem('haji7aman_active');
-  if(activeId){
-    const orders = getStoredOrders();
-    const stored = orders.find(o=>o.orderId===activeId);
-    if(stored && stored.status!=='done' && stored.status!=='cancelled'){
-      customerName = stored.name;
-      customerPhone = stored.phone;
-      try{
-        const snap = await db.collection('customer_orders').doc(activeId).get();
+  const orders = getStoredOrders();
+  const stored = activeId ? orders.find(o=>o.orderId===activeId) : null;
+
+  if(stored && stored.status!=='done' && stored.status!=='cancelled'){
+    // We have an active order — show tracking immediately from localStorage
+    // then Firebase will update it live once connected
+    customerName = stored.name;
+    customerPhone = stored.phone;
+    document.getElementById('track-order-id').textContent = 'Order #' + stored.orderId.slice(-6).toUpperCase();
+    document.getElementById('track-name').textContent = 'Hi, ' + stored.name + '!';
+    renderTrackItems(stored.items||[]);
+    renderTrackSteps(stored.status||'received');
+    showPage('page-track');
+
+    // Then connect Firebase in background to get live status
+    try{
+      if(trackUnsub) trackUnsub();
+      trackUnsub = db.collection('customer_orders').doc(stored.orderId).onSnapshot(snap => {
         if(snap.exists){
-          startTracking(activeId, {...snap.data(), customerName:stored.name});
-        } else {
-          startTracking(activeId, {customerName:stored.name, items:stored.items||[], status:stored.status||'received'});
+          const data = snap.data();
+          renderTrackSteps(data.status);
+          updateStoredOrderStatus(stored.orderId, data.status);
+          if(data.status==='ready'||data.status==='pending') playReadySound();
         }
-      }catch(e){
-        console.error('Restore error:',e);
-        showPage('page-info');
-      }
-      return; // startTracking calls showPage, so we're done
+      }, err => console.error('Snapshot error:', err));
+    }catch(e){ console.error('Firebase connect error:',e); }
+
+  } else {
+    // No active order — check if customer was on menu or review page
+    const savedPage = localStorage.getItem('haji7aman_page');
+    const cust = JSON.parse(localStorage.getItem('haji7aman_customer')||'{}');
+    if(savedPage && (savedPage==='page-menu'||savedPage==='page-review') && cust.name){
+      customerName = cust.name;
+      customerPhone = cust.phone||'';
+      showPage('page-menu'); // always restore to menu (cart is gone after refresh anyway)
+    } else {
+      showPage('page-info');
     }
   }
-  // No active order — go to name/phone page
-  showPage('page-info');
+
+  // Load menu in background regardless
+  loadMenu();
 });
 </script>
 </body>
